@@ -41,32 +41,15 @@ jobs:
         echo "\n=== Dependencias instaladas ==="
         pip list
     
-    - name: Crear directorios necesarios
+    - name: Crear directorio de salida
       run: |
-        # Crear directorios necesarios con permisos completos
-        echo "=== Creando directorios con permisos completos ==="
+        # Solo creamos el directorio de salida
+        echo "=== Creando directorio de salida ==="
         mkdir -p output/competitors
-        mkdir -p automation/logs
         
-        # Asegurar permisos completos
-        chmod -R 777 output automation/logs
-        
-        # Verificar directorios
-        echo "\n=== Directorios creados: ==="
-        ls -la
-        ls -la automation/
-        
-        echo "\n=== Permisos de logs: ==="
-        ls -ld automation/logs
-        ls -la automation/logs/ 2>/dev/null || echo "No se pudo listar automation/logs/"
-        
-        # Crear archivo de log vacío para asegurar permisos
-        touch automation/logs/scraper_automation.log
-        chmod 666 automation/logs/scraper_automation.log
-        
-        echo "\n=== Verificando permisos de escritura ==="
-        echo "Test de escritura" > automation/logs/test_write.log 2>&1 && echo "Escritura exitosa" || echo "Error de escritura"
-        ls -la automation/logs/ 2>/dev/null || echo "No se pudo listar automation/logs/ después de prueba de escritura"
+        # Verificar directorio
+        echo "\n=== Directorio de salida creado: ==="
+        ls -la output/
         
     - name: Ejecutar scraper
       env:

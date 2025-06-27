@@ -28,28 +28,44 @@ except ImportError:
 
 def setup_logging():
     """Configura el sistema de logging de manera simple y robusta."""
-    # Configurar el logger básico
-    logger = logging.getLogger('news_scraper')
-    logger.setLevel(logging.INFO)
-    
-    # Eliminar manejadores existentes para evitar duplicados
-    if logger.hasHandlers():
-        logger.handlers.clear()
-    
-    # Formato para los logs
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    
-    # Manejador para consola (siempre disponible)
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-    
-    # No usamos archivo de log para evitar problemas de permisos
-    logger.info("Logging configurado solo para consola")
-    return logger
+    try:
+        # Configurar el logger básico
+        logger = logging.getLogger('news_scraper')
+        logger.setLevel(logging.INFO)
+        
+        # Eliminar manejadores existentes para evitar duplicados
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        # Formato para los logs
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        
+        # Manejador para consola (siempre disponible)
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        
+        # Intentar configurar archivo de log (opcional, no crítico)
+        try:
+            log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, 'scraper_automation.log')
+            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+            logger.info(f"Logs guardados en: {log_file}")
+        except Exception as e:
+            # Si falla, solo mostramos un mensaje pero continuamos
+            logger.info("No se pudo configurar el archivo de log. Continuando solo con consola.")
+        
+        return logger
+    except Exception as e:
+        # Si hay algún error en la configuración del logging, devolvemos un logger básico
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        return logging.getLogger('news_scraper_fallback')
 
 # Configurar logging final
 logger = setup_logging()
