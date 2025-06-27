@@ -8,6 +8,20 @@ import os
 import sys
 import json
 import logging
+import tarfile
+import datetime
+from pathlib import Path
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+
+# Crear directorio de logs si no existe
+os.makedirs('logs', exist_ok=True)
+
+import os
+import sys
+import json
+import logging
 import argparse
 import tarfile
 from datetime import datetime, timedelta
