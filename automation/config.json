@@ -1,0 +1,6 @@
+{
+  "execution_times": ["08:00", "14:00", "20:00"],
+  "days_to_keep": 7,
+  "output_dir": "output/competitors",
+  "log_file": "logs/scraper_automation.log"
+}

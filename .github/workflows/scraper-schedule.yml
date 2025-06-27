@@ -1,0 +1,57 @@
+name: Ejecución Programada del Scraper
+
+on:
+  schedule:
+    # Ejecutar a las 8:00, 14:00 y 20:00 UTC (9:00, 15:00 y 21:00 en horario de verano español)
+    - cron: '0 6,12,18 * * *'
+  workflow_dispatch:  # Permite ejecutar manualmente
+
+jobs:
+  scrape-and-upload:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_competitors.txt
+        pip install gdown
+    
+    - name: Ejecutar scraper
+      env:
+        GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+      run: |
+        # Crear directorio de salida
+        mkdir -p output/competitors
+        
+        # Ejecutar el script de automatización
+        python automation/run_automation.py
+        
+        # Comprimir los archivos CSV generados
+        tar -czf news_export_$(date +%Y%m%d_%H%M%S).tar.gz output/competitors/*.csv
+        
+        # Subir a Google Drive usando gdown
+        # Nota: Necesitarás configurar previamente las credenciales
+        # gdown upload --folder $GOOGLE_DRIVE_FOLDER_ID news_export_*.tar.gz
+        
+        echo "Los archivos están listos para ser subidos a Google Drive"
+    
+    - name: Configurar Git
+      run: |
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
+    
+    - name: Commit y Push de logs
+      run: |
+        git add logs/
+        git diff --quiet && git diff --staged --quiet || \
+        (git commit -m "Actualización automática de logs" && \
+         git push origin $GITHUB_REF) || echo "No hay cambios en los logs"
