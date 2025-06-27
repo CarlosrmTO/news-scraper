@@ -29,9 +29,18 @@ except ImportError:
 def setup_logging():
     """Configura el sistema de logging usando rutas absolutas y manejo robusto de errores."""
     try:
-        # Usar /tmp para evitar problemas de permisos en GitHub Actions
-        base_dir = os.environ.get('RUNNER_TEMP', os.path.dirname(os.path.abspath(__file__)))
+        # Usar el directorio de trabajo actual como base
+        base_dir = os.getcwd()
         logs_dir = os.path.join(base_dir, 'logs')
+        
+        # Si estamos en GitHub Actions, usar el directorio de trabajo del repositorio
+        if os.environ.get('GITHUB_WORKSPACE'):
+            base_dir = os.environ['GITHUB_WORKSPACE']
+            logs_dir = os.path.join(base_dir, 'logs')
+        # Si no, usar el directorio del script como respaldo
+        elif not os.path.exists(logs_dir) or not os.access(logs_dir, os.W_OK):
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            logs_dir = os.path.join(base_dir, 'logs')
         
         # Crear directorio de logs con permisos explícitos
         try:
