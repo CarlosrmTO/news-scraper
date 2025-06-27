@@ -15,20 +15,41 @@ import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 
-# Asegurar que el directorio de logs exista antes de cualquier intento de logging
-LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-os.makedirs(LOGS_DIR, exist_ok=True)
+# Configuración de rutas
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGS_DIR = os.path.join(SCRIPT_DIR, 'logs')
 
-# Configurar el logger raíz temporalmente para capturar cualquier mensaje temprano
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(os.path.join(LOGS_DIR, 'scraper_automation.log'), mode='a', encoding='utf-8')
-    ]
-)
+# Asegurar que el directorio de logs exista antes de cualquier intento de logging
+try:
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    # Asegurar permisos adecuados
+    os.chmod(LOGS_DIR, 0o777)
+    
+    # Configurar el logger raíz temporalmente para capturar cualquier mensaje temprano
+    log_file = os.path.join(LOGS_DIR, 'scraper_automation.log')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(log_file, mode='a', encoding='utf-8')
+        ]
+    )
+    
+    # Asegurar permisos del archivo de log
+    if os.path.exists(log_file):
+        os.chmod(log_file, 0o666)
+        
+except Exception as e:
+    # Fallback a configuración básica si hay algún error
+    print(f"Error configurando logging: {e}")
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[logging.StreamHandler()]
+    )
 
 # Crear un logger temporal hasta que configuremos el final
 logger = logging.getLogger('news_scraper')
