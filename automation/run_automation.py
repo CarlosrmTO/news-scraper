@@ -106,6 +106,15 @@ def setup_logging():
     
     return logger
 
+# Asegurar que el directorio de logs exista
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+try:
+    os.makedirs(log_dir, exist_ok=True)
+    # Intentar dar permisos completos para evitar problemas
+    os.chmod(log_dir, 0o777)
+except Exception as e:
+    print(f"No se pudo crear el directorio de logs: {e}")
+
 # Configurar logging final
 logger = setup_logging()
 logger.info("Configuración de logging completada correctamente")
