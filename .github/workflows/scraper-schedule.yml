@@ -51,6 +51,13 @@ jobs:
         echo "\n=== Directorio de salida creado: ==="
         ls -la output/
         
+    - name: Crear directorio de logs
+      run: |
+        echo "=== Creando directorio de logs ==="
+        mkdir -p logs
+        echo "Permisos del directorio logs:"
+        ls -la | grep logs
+        
     - name: Ejecutar scraper
       env:
         GOOGLE_DRIVE_FOLDER_ID: "1wqN9FUUlovaCZLKTdgp1sSZjjud57sFN"  # ID de la carpeta de Google Drive
@@ -60,9 +67,19 @@ jobs:
         
         echo "=== INICIO DE EJECUCIÓN ==="
         echo "Directorio de trabajo: $(pwd)"
+        echo "Contenido del directorio:"
+        ls -la
         
         # Crear directorio de salida
         mkdir -p output/competitors
+        
+        # Verificar directorio de logs
+        echo "=== Verificando directorio de logs ==="
+        mkdir -p logs
+        echo "Permisos después de crear logs:"
+        ls -ld logs
+        echo "Contenido de logs:"
+        ls -la logs/
         
         # Instalar gdown si no está instalado
         if ! command -v gdown &> /dev/null; then
