@@ -10,22 +10,9 @@ import json
 import logging
 import tarfile
 import datetime
-from pathlib import Path
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-
-# Crear directorio de logs si no existe
-os.makedirs('logs', exist_ok=True)
-
-import os
-import sys
-import json
-import logging
 import argparse
-import tarfile
-from datetime import datetime, timedelta
 from pathlib import Path
+from datetime import datetime, timedelta
 
 # Intentar importar las dependencias de Google Drive
 try:
@@ -38,19 +25,26 @@ except ImportError:
     GOOGLE_DRIVE_AVAILABLE = False
     print("Advertencia: No se encontraron las dependencias de Google Drive. La subida a Drive estará deshabilitada.")
 
-# Añadir el directorio raíz al path para imports
-sys.path.append(str(Path(__file__).parent.parent))
+def setup_logging():
+    """Configura el sistema de logging asegurando que el directorio de logs existe."""
+    # Crear directorio de logs si no existe
+    logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+    os.makedirs(logs_dir, exist_ok=True)
+    
+    # Configurar el logger
+    log_file = os.path.join(logs_dir, 'scraper_automation.log')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
+    )
+    return logging.getLogger(__name__)
 
-# Configuración de logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/scraper_automation.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+# Configurar logging
+logger = setup_logging()
 
 def load_config():
     """Cargar configuración desde el archivo JSON."""
