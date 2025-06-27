@@ -15,6 +15,25 @@ import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 
+# Asegurar que el directorio de logs exista antes de cualquier intento de logging
+LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# Configurar el logger raíz temporalmente para capturar cualquier mensaje temprano
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(os.path.join(LOGS_DIR, 'scraper_automation.log'), mode='a', encoding='utf-8')
+    ]
+)
+
+# Crear un logger temporal hasta que configuremos el final
+logger = logging.getLogger('news_scraper')
+logger.info("Iniciando configuración del sistema de logging...")
+
 # Intentar importar las dependencias de Google Drive
 try:
     from google.oauth2 import service_account
@@ -108,21 +127,33 @@ def setup_logging():
     
     return logger
         
-    # El resto del código de configuración de logging se ha movido arriba
-    pass
+    return logger
 
-# Configurar logging
+# Configurar logging final
 logger = setup_logging()
+logger.info("Configuración de logging completada correctamente")
 
 def load_config():
     """Cargar configuración desde el archivo JSON."""
-    config_path = Path(__file__).parent / 'config.json'
     try:
+        config_path = Path(__file__).parent / 'config.json'
+        logger.info(f"Intentando cargar configuración desde: {config_path}")
+        
+        if not config_path.exists():
+            logger.warning(f"Archivo de configuración no encontrado: {config_path}")
+            return {}
+            
         with open(config_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            config = json.load(f)
+            logger.info("Configuración cargada exitosamente")
+            return config
+            
+    except json.JSONDecodeError as e:
+        logger.error(f"Error al decodificar el archivo de configuración: {e}")
     except Exception as e:
-        logger.error(f"Error al cargar la configuración: {e}")
-        return {}
+        logger.error(f"Error inesperado al cargar la configuración: {e}")
+    
+    return {}  # Retornar diccionario vacío en caso de error
 
 def get_today_files(output_dir):
     """Obtener la lista de archivos del día actual."""
