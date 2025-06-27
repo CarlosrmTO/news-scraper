@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+.pytest_cache/
+.mypy_cache/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de salida
+output/
+*.log
+*.csv
+
+# Credenciales
+*.env
+*.pem
+*.key
+
+# Archivos de IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Archivos temporales
+*.tmp
+*.bak
+*~
+
+# Archivos de Jupyter Notebook
+.ipynb_checkpoints/
+
+# Archivos de cobertura
+htmlcov/
+.coverage
+.coverage.*
+
+# Archivos de configuración local
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Archivos de paquetes
+*.egg
+*.egg-info/
+dist/
+build/
+*.eggs/
+
+# Archivos de caché
+.cache/
+
+# Archivos de entorno virtual
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Archivos de Sphinx
+docs/_build/
