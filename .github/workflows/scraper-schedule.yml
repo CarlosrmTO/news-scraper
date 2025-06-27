@@ -43,33 +43,81 @@ jobs:
     
     - name: Crear directorios necesarios
       run: |
-        # Crear directorios necesarios
+        # Crear directorios necesarios con permisos completos
+        echo "=== Creando directorios con permisos completos ==="
         mkdir -p output/competitors
         mkdir -p logs
-        echo "Directorios creados:"
+        
+        # Asegurar permisos completos
+        chmod -R 777 output logs
+        
+        # Verificar directorios
+        echo "\n=== Directorios creados: ==="
         ls -la
+        
+        echo "\n=== Permisos de logs: ==="
+        ls -ld logs
+        ls -la logs/ 2>/dev/null || echo "No se pudo listar logs/"
+        
+        # Crear archivo de log vacío para asegurar permisos
+        touch logs/scraper_automation.log
+        chmod 666 logs/scraper_automation.log
+        
+        echo "\n=== Verificando permisos de escritura ==="
+        echo "Test de escritura" > logs/test_write.log 2>&1 && echo "Escritura exitosa" || echo "Error de escritura"
+        ls -la logs/ 2>/dev/null || echo "No se pudo listar logs/ después de prueba de escritura"
         
     - name: Ejecutar scraper
       env:
         GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        PYTHONUNBUFFERED: "1"
       run: |
+        # Verificación básica del entorno
+        echo "=== INICIO DE EJECUCIÓN ==="
+        pwd
+        whoami
+        groups
+        
         # Verificar directorios
-        echo "Verificando directorios:"
+        echo -e "\n=== VERIFICACIÓN DE DIRECTORIOS ==="
         ls -la
-        ls -la logs/ || echo "No se pudo listar logs/"
         
+        # Crear directorio de logs si no existe
+        mkdir -p logs
+        chmod 777 logs
         
-        # Ejecutar el script de automatización
-        python automation/run_automation.py
+        # Verificar permisos
+        echo -e "\n=== PRUEBA DE ESCRITURA ==="
+        TEST_FILE="logs/test_$(date +%s).log"
+        if echo "test" > "$TEST_FILE"; then
+          echo "✓ Escritura exitosa en $TEST_FILE"
+          ls -l "$TEST_FILE"
+        else
+          echo "✗ Error al escribir en $TEST_FILE"
+        fi
         
-        # Comprimir los archivos CSV generados
-        tar -czf news_export_$(date +%Y%m%d_%H%M%S).tar.gz output/competitors/*.csv
+        # Ejecutar el script principal
+        echo -e "\n=== EJECUTANDO SCRAPER ==="
+        python automation/run_automation.py 2>&1 | tee logs/script_output.log
+        SCRIPT_EXIT_CODE=${PIPESTATUS[0]}
         
-        # Subir a Google Drive usando gdown
-        # Nota: Necesitarás configurar previamente las credenciales
-        # gdown upload --folder $GOOGLE_DRIVE_FOLDER_ID news_export_*.tar.gz
+        # Mostrar logs
+        echo -e "\n=== ÚLTIMAS 50 LÍNEAS DEL LOG ==="
+        tail -n 50 logs/scraper_automation.log 2>/dev/null || echo "No se pudo leer el archivo de log"
         
-        echo "Los archivos están listos para ser subidos a Google Drive"
+        # Comprimir resultados si la ejecución fue exitosa
+        if [ $SCRIPT_EXIT_CODE -eq 0 ]; then
+          echo -e "\n=== COMPRIMIENDO RESULTADOS ==="
+          mkdir -p output/competitors
+          tar -czf news_export_$(date +%Y%m%d_%H%M%S).tar.gz output/competitors/*.csv 2>/dev/null || echo "No se encontraron archivos CSV"
+          
+          echo -e "\n=== ARCHIVOS GENERADOS ==="
+          find output -type f | sort
+        else
+          echo -e "\n✗ EL SCRIPT FALLÓ CON CÓDIGO $SCRIPT_EXIT_CODE"
+          tail -n 50 logs/script_output.log 2>/dev/null || echo "No se pudo leer el archivo de salida"
+          exit $SCRIPT_EXIT_CODE
+        fi
     
     - name: Configurar Git
       run: |
