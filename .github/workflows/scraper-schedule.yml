@@ -21,9 +21,25 @@ jobs:
     
     - name: Instalar dependencias
       run: |
+        echo "=== Información del sistema ==="
+        uname -a
+        python --version
+        pip --version
+        
+        echo "\n=== Contenido del directorio ==="
+        ls -la
+        
+        echo "\n=== Contenido de requirements_competitors.txt ==="
+        cat requirements_competitors.txt
+        
+        echo "\n=== Instalando dependencias ==="
         python -m pip install --upgrade pip
+        pip install newspaper3k==0.2.8
         pip install -r requirements_competitors.txt
         pip install gdown
+        
+        echo "\n=== Dependencias instaladas ==="
+        pip list
     
     - name: Ejecutar scraper
       env:
