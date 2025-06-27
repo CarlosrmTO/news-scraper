@@ -70,7 +70,7 @@ jobs:
         
     - name: Ejecutar scraper
       env:
-        GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        GOOGLE_DRIVE_FOLDER_ID: "1wqN9FUUlovaCZLKTdgp1sSZjjud57sFN"  # ID de la carpeta de Google Drive
         PYTHONUNBUFFERED: "1"
       run: |
         # Configuración inicial
@@ -117,6 +117,12 @@ jobs:
           fi
         fi
         
+        # Instalar gdown si no está instalado
+        if ! command -v gdown &> /dev/null; then
+          echo -e "\n=== INSTALANDO GDOWN ==="
+          pip install gdown --upgrade
+        fi
+        
         # Ejecutar el script principal
         echo -e "\n=== EJECUTANDO SCRAPER ==="
         python automation/run_automation.py 2>&1 | tee automation/logs/script_output.log
@@ -148,16 +154,14 @@ jobs:
             tar -czf "$ARCHIVE_NAME" -C output/competitors .
             echo "Archivo comprimido creado: $ARCHIVE_NAME"
             
-            # Subir a Google Drive si está configurado
+            # Subir a Google Drive
+            echo -e "\n=== SUBIENDO A GOOGLE DRIVE ==="
             if [ -n "$GOOGLE_DRIVE_FOLDER_ID" ]; then
-              echo -e "\n=== SUBIENDO A GOOGLE DRIVE ==="
-              if command -v gdown &> /dev/null; then
-                gdown upload --folder "$GOOGLE_DRIVE_FOLDER_ID" "$ARCHIVE_NAME" || echo "Error al subir a Google Drive"
-              else
-                echo "gdown no está instalado, omitiendo subida a Google Drive"
-              fi
+              echo "Subiendo a Google Drive (Carpeta ID: $GOOGLE_DRIVE_FOLDER_ID)"
+              gdown upload --folder "$GOOGLE_DRIVE_FOLDER_ID" "$ARCHIVE_NAME" || \
+                echo "Error al subir a Google Drive. Verifica las credenciales y la conexión."
             else
-              echo -e "\n=== ADVERTENCIA: No se configuró GOOGLE_DRIVE_FOLDER_ID, omitiendo subida a Google Drive ==="
+              echo "No se configuró GOOGLE_DRIVE_FOLDER_ID. Omitiendo subida a Google Drive."
             fi
           else
             echo "No se encontraron archivos CSV para comprimir"

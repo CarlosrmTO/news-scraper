@@ -15,41 +15,53 @@ import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 
-# Configuración de rutas
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGS_DIR = os.path.join(SCRIPT_DIR, 'logs')
-
-# Asegurar que el directorio de logs exista antes de cualquier intento de logging
-try:
-    os.makedirs(LOGS_DIR, exist_ok=True)
-    # Asegurar permisos adecuados
-    os.chmod(LOGS_DIR, 0o777)
+def setup_logging():
+    """Configura el sistema de logging con manejo robusto de directorios y permisos."""
+    # Configuración de rutas
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    LOGS_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, 'logs'))
     
-    # Configurar el logger raíz temporalmente para capturar cualquier mensaje temprano
+    # Crear directorio de logs si no existe
+    try:
+        os.makedirs(LOGS_DIR, exist_ok=True)
+        os.chmod(LOGS_DIR, 0o777)  # Asegurar permisos completos
+    except Exception as e:
+        print(f"No se pudo crear el directorio de logs: {e}")
+        LOGS_DIR = os.path.abspath('/tmp/news-scraper-logs')
+        os.makedirs(LOGS_DIR, exist_ok=True)
+        os.chmod(LOGS_DIR, 0o777)
+    
+    # Configurar el logger
+    logger = logging.getLogger('news_scraper')
+    logger.setLevel(logging.INFO)
+    
+    # Formato para los logs
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Manejador para consola
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # Manejador para archivo
     log_file = os.path.join(LOGS_DIR, 'scraper_automation.log')
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(log_file, mode='a', encoding='utf-8')
-        ]
-    )
+    try:
+        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        # Asegurar permisos del archivo de log
+        if os.path.exists(log_file):
+            os.chmod(log_file, 0o666)
+    except Exception as e:
+        logger.error(f"No se pudo configurar el archivo de log: {e}")
     
-    # Asegurar permisos del archivo de log
-    if os.path.exists(log_file):
-        os.chmod(log_file, 0o666)
-        
-except Exception as e:
-    # Fallback a configuración básica si hay algún error
-    print(f"Error configurando logging: {e}")
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[logging.StreamHandler()]
-    )
+    return logger
+
+# Configurar logging al inicio
+logger = setup_logging()
 
 # Crear un logger temporal hasta que configuremos el final
 logger = logging.getLogger('news_scraper')
