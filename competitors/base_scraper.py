@@ -10,12 +10,37 @@ from datetime import datetime, timezone
 from newspaper import Article, Config
 from urllib.parse import urlparse
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+def setup_logging():
+    """Configura el sistema de logging de manera simple y robusta."""
+    try:
+        # Configurar el logger básico
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+        
+        # Eliminar manejadores existentes para evitar duplicados
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        # Formato para los logs
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        
+        # Manejador para consola (siempre disponible)
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        
+        # No configuramos archivo de log aquí, dejamos que los scripts principales lo hagan
+        
+        return logger
+    except Exception as e:
+        # Si hay algún error en la configuración del logging, devolvemos un logger básico
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        return logging.getLogger('base_scraper_fallback')
+
+# Configurar logging
+logger = setup_logging()
 
 # Common user agents to rotate
 USER_AGENTS = [

@@ -9,16 +9,48 @@ from datetime import datetime, timezone, timedelta
 # Add the current directory to the Python path
 sys.path.insert(0, os.path.abspath('.'))
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('test_el_pais_scraper.log')
-    ]
-)
-logger = logging.getLogger(__name__)
+def setup_logging():
+    """Configura el sistema de logging de manera simple y robusta."""
+    try:
+        # Configurar el logger básico
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+        
+        # Eliminar manejadores existentes para evitar duplicados
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        # Formato para los logs
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        
+        # Manejador para consola (siempre disponible)
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        
+        # Intentar configurar archivo de log (opcional, no crítico)
+        try:
+            log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, 'test_el_pais_scraper.log')
+            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+            logger.info(f"Logs guardados en: {log_file}")
+        except Exception as e:
+            # Si falla, solo mostramos un mensaje pero continuamos
+            logger.info("No se pudo configurar el archivo de log. Continuando solo con consola.")
+        
+        return logger
+    except Exception as e:
+        # Si hay algún error en la configuración del logging, devolvemos un logger básico
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        return logging.getLogger('test_el_pais_scraper_fallback')
+
+# Configurar logging
+logger = setup_logging()
 
 def test_el_pais_scraper():
     """Test the El País scraper."""
