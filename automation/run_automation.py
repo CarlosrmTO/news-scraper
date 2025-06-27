@@ -16,24 +16,14 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 def setup_logging():
-    """Configura el sistema de logging con manejo robusto de directorios y permisos."""
-    # Configuración de rutas
-    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    LOGS_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, 'logs'))
-    
-    # Crear directorio de logs si no existe
-    try:
-        os.makedirs(LOGS_DIR, exist_ok=True)
-        os.chmod(LOGS_DIR, 0o777)  # Asegurar permisos completos
-    except Exception as e:
-        print(f"No se pudo crear el directorio de logs: {e}")
-        LOGS_DIR = os.path.abspath('/tmp/news-scraper-logs')
-        os.makedirs(LOGS_DIR, exist_ok=True)
-        os.chmod(LOGS_DIR, 0o777)
-    
-    # Configurar el logger
+    """Configura el sistema de logging de manera simple y robusta."""
+    # Configurar el logger básico solo para consola
     logger = logging.getLogger('news_scraper')
     logger.setLevel(logging.INFO)
+    
+    # Eliminar manejadores existentes para evitar duplicados
+    if logger.hasHandlers():
+        logger.handlers.clear()
     
     # Formato para los logs
     formatter = logging.Formatter(
@@ -41,22 +31,25 @@ def setup_logging():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    # Manejador para consola
+    # Manejador para consola (siempre disponible)
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
-    # Manejador para archivo
-    log_file = os.path.join(LOGS_DIR, 'scraper_automation.log')
+    # Intentar configurar archivo de log (opcional)
     try:
+        SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+        LOGS_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, 'logs'))
+        os.makedirs(LOGS_DIR, exist_ok=True)
+        
+        log_file = os.path.join(LOGS_DIR, 'scraper_automation.log')
         file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-        # Asegurar permisos del archivo de log
-        if os.path.exists(log_file):
-            os.chmod(log_file, 0o666)
+        logger.info(f"Log guardado en: {log_file}")
     except Exception as e:
-        logger.error(f"No se pudo configurar el archivo de log: {e}")
+        # Si falla, continuamos sin archivo de log
+        logger.warning(f"No se pudo configurar archivo de log: {e}")
     
     return logger
 

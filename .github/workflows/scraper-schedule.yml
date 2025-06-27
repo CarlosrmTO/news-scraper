@@ -71,105 +71,49 @@ jobs:
     - name: Ejecutar scraper
       env:
         GOOGLE_DRIVE_FOLDER_ID: "1wqN9FUUlovaCZLKTdgp1sSZjjud57sFN"  # ID de la carpeta de Google Drive
-        PYTHONUNBUFFERED: "1"
       run: |
         # Configuración inicial
         set -e  # Salir en caso de error
         
-        # Verificación básica del entorno
         echo "=== INICIO DE EJECUCIÓN ==="
         echo "Directorio de trabajo: $(pwd)"
-        echo "Usuario: $(whoami)"
-        echo "Grupos: $(groups)"
         
-        # Crear directorios necesarios con permisos adecuados
-        echo -e "\n=== CONFIGURANDO DIRECTORIOS ==="
+        # Crear directorio de salida
         mkdir -p output/competitors
-        mkdir -p automation/logs
-        chmod -R 777 output automation/logs
-        
-        # Verificar directorios y permisos
-        echo -e "\n=== VERIFICANDO DIRECTORIOS Y PERMISOS ==="
-        ls -la
-        ls -la automation/
-        
-        # Verificar permisos de escritura
-        echo -e "\n=== PRUEBA DE ESCRITURA ==="
-        TEST_FILE="automation/logs/test_$(date +%s).log"
-        if echo "test" > "$TEST_FILE"; then
-          echo "✓ Escritura exitosa en $TEST_FILE"
-          ls -l "$TEST_FILE"
-          rm -f "$TEST_FILE"  # Limpiar archivo de prueba
-        else
-          echo "✗ Error al escribir en $TEST_FILE"
-          # Intentar con directorio temporal si falla
-          TEMP_LOG_DIR="/tmp/news-scraper-logs"
-          mkdir -p "$TEMP_LOG_DIR"
-          chmod 777 "$TEMP_LOG_DIR"
-          TEST_FILE="$TEMP_LOG_DIR/test_$(date +%s).log"
-          if echo "test" > "$TEST_FILE"; then
-            echo "✓ Escritura exitosa en $TEST_FILE"
-            export LOG_DIR="$TEMP_LOG_DIR"
-            rm -f "$TEST_FILE"  # Limpiar archivo de prueba
-          else
-            echo "✗ Error crítico: No se pudo escribir en ningún directorio"
-            exit 1
-          fi
-        fi
         
         # Instalar gdown si no está instalado
         if ! command -v gdown &> /dev/null; then
-          echo -e "\n=== INSTALANDO GDOWN ==="
+          echo "Instalando gdown..."
           pip install gdown --upgrade
         fi
         
         # Ejecutar el script principal
-        echo -e "\n=== EJECUTANDO SCRAPER ==="
-        python automation/run_automation.py 2>&1 | tee automation/logs/script_output.log
-        SCRIPT_EXIT_CODE=${PIPESTATUS[0]}
+        echo "Ejecutando el script de scraping..."
+        python automation/run_automation.py || {
+          echo "Error al ejecutar el script de scraping";
+          exit 1;
+        }
         
-        # Mostrar logs
-        echo -e "\n=== ÚLTIMAS 50 LÍNEAS DEL LOG ==="
-        LOG_FILE="${LOG_DIR:-automation/logs}/scraper_automation.log"
-        if [ -f "$LOG_FILE" ]; then
-          tail -n 50 "$LOG_FILE"
-        else
-          echo "No se pudo encontrar el archivo de log en $LOG_FILE"
-          echo "Buscando archivos de log..."
-          find . -name "*.log" -type f -exec echo "=== Encontrado: {}" \; -exec head -n 5 {} \;
-        fi
+        # Comprimir resultados
+        echo "Comprimiendo resultados..."
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        ARCHIVE_NAME="news_export_${TIMESTAMP}.tar.gz"
         
-        # Comprimir resultados si la ejecución fue exitosa
-        if [ $SCRIPT_EXIT_CODE -eq 0 ]; then
-          echo -e "\n=== ARCHIVOS GENERADOS ==="
-          find output -type f | sort
+        # Verificar si hay archivos para comprimir
+        if [ $(find output/competitors -name "*.csv" | wc -l) -gt 0 ]; then
+          tar -czf "$ARCHIVE_NAME" -C output/competitors .
+          echo "Archivo comprimido creado: $ARCHIVE_NAME"
           
-          # Comprimir resultados
-          echo -e "\n=== COMPRIMIENDO RESULTADOS ==="
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          ARCHIVE_NAME="news_export_${TIMESTAMP}.tar.gz"
-          
-          # Verificar si hay archivos para comprimir
-          if [ $(find output/competitors -name "*.csv" | wc -l) -gt 0 ]; then
-            tar -czf "$ARCHIVE_NAME" -C output/competitors .
-            echo "Archivo comprimido creado: $ARCHIVE_NAME"
-            
-            # Subir a Google Drive
-            echo -e "\n=== SUBIENDO A GOOGLE DRIVE ==="
-            if [ -n "$GOOGLE_DRIVE_FOLDER_ID" ]; then
-              echo "Subiendo a Google Drive (Carpeta ID: $GOOGLE_DRIVE_FOLDER_ID)"
-              gdown upload --folder "$GOOGLE_DRIVE_FOLDER_ID" "$ARCHIVE_NAME" || \
-                echo "Error al subir a Google Drive. Verifica las credenciales y la conexión."
-            else
-              echo "No se configuró GOOGLE_DRIVE_FOLDER_ID. Omitiendo subida a Google Drive."
-            fi
+          # Subir a Google Drive
+          echo "Subiendo a Google Drive..."
+          if [ -n "$GOOGLE_DRIVE_FOLDER_ID" ]; then
+            gdown upload --folder "$GOOGLE_DRIVE_FOLDER_ID" "$ARCHIVE_NAME" || \
+              echo "Advertencia: No se pudo subir a Google Drive"
           else
-            echo "No se encontraron archivos CSV para comprimir"
+            echo "Advertencia: No se configuró GOOGLE_DRIVE_FOLDER_ID"
           fi
         else
-          echo -e "\n✗ EL SCRIPT FALLÓ CON CÓDIGO $SCRIPT_EXIT_CODE"
-          [ -f "automation/logs/script_output.log" ] && tail -n 50 "automation/logs/script_output.log" || echo "No se pudo leer el archivo de salida"
-          exit $SCRIPT_EXIT_CODE
+          echo "No se encontraron archivos CSV para comprimir"
         fi
     
     - name: Configurar Git
