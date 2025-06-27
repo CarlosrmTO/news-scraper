@@ -46,26 +46,27 @@ jobs:
         # Crear directorios necesarios con permisos completos
         echo "=== Creando directorios con permisos completos ==="
         mkdir -p output/competitors
-        mkdir -p logs
+        mkdir -p automation/logs
         
         # Asegurar permisos completos
-        chmod -R 777 output logs
+        chmod -R 777 output automation/logs
         
         # Verificar directorios
         echo "\n=== Directorios creados: ==="
         ls -la
+        ls -la automation/
         
         echo "\n=== Permisos de logs: ==="
-        ls -ld logs
-        ls -la logs/ 2>/dev/null || echo "No se pudo listar logs/"
+        ls -ld automation/logs
+        ls -la automation/logs/ 2>/dev/null || echo "No se pudo listar automation/logs/"
         
         # Crear archivo de log vacío para asegurar permisos
-        touch logs/scraper_automation.log
-        chmod 666 logs/scraper_automation.log
+        touch automation/logs/scraper_automation.log
+        chmod 666 automation/logs/scraper_automation.log
         
         echo "\n=== Verificando permisos de escritura ==="
-        echo "Test de escritura" > logs/test_write.log 2>&1 && echo "Escritura exitosa" || echo "Error de escritura"
-        ls -la logs/ 2>/dev/null || echo "No se pudo listar logs/ después de prueba de escritura"
+        echo "Test de escritura" > automation/logs/test_write.log 2>&1 && echo "Escritura exitosa" || echo "Error de escritura"
+        ls -la automation/logs/ 2>/dev/null || echo "No se pudo listar automation/logs/ después de prueba de escritura"
         
     - name: Ejecutar scraper
       env:
@@ -82,18 +83,30 @@ jobs:
         echo -e "\n=== VERIFICACIÓN DE DIRECTORIOS ==="
         ls -la
         
-        # Crear directorio de logs si no existe
-        mkdir -p logs
-        chmod 777 logs
+        # Asegurar que el directorio de logs exista
+        mkdir -p automation/logs
+        chmod 777 -R automation/logs
         
         # Verificar permisos
         echo -e "\n=== PRUEBA DE ESCRITURA ==="
-        TEST_FILE="logs/test_$(date +%s).log"
+        TEST_FILE="automation/logs/test_$(date +%s).log"
         if echo "test" > "$TEST_FILE"; then
           echo "✓ Escritura exitosa en $TEST_FILE"
           ls -l "$TEST_FILE"
         else
           echo "✗ Error al escribir en $TEST_FILE"
+          # Intentar con directorio temporal si falla
+          TEMP_LOG_DIR="/tmp/news-scraper-logs"
+          mkdir -p "$TEMP_LOG_DIR"
+          chmod 777 "$TEMP_LOG_DIR"
+          TEST_FILE="$TEMP_LOG_DIR/test_$(date +%s).log"
+          if echo "test" > "$TEST_FILE"; then
+            echo "✓ Escritura exitosa en $TEST_FILE"
+            export LOG_DIR="$TEMP_LOG_DIR"
+          else
+            echo "✗ Error crítico: No se pudo escribir en ningún directorio"
+            exit 1
+          fi
         fi
         
         # Ejecutar el script principal
@@ -103,7 +116,14 @@ jobs:
         
         # Mostrar logs
         echo -e "\n=== ÚLTIMAS 50 LÍNEAS DEL LOG ==="
-        tail -n 50 logs/scraper_automation.log 2>/dev/null || echo "No se pudo leer el archivo de log"
+        LOG_FILE="${LOG_DIR:-automation/logs}/scraper_automation.log"
+        if [ -f "$LOG_FILE" ]; then
+          tail -n 50 "$LOG_FILE"
+        else
+          echo "No se pudo encontrar el archivo de log en $LOG_FILE"
+          echo "Buscando archivos de log..."
+          find . -name "*.log" -type f -exec echo "=== Encontrado: {}" \; -exec head -n 5 {} \;
+        fi
         
         # Comprimir resultados si la ejecución fue exitosa
         if [ $SCRIPT_EXIT_CODE -eq 0 ]; then
