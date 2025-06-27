@@ -41,12 +41,23 @@ jobs:
         echo "\n=== Dependencias instaladas ==="
         pip list
     
+    - name: Crear directorios necesarios
+      run: |
+        # Crear directorios necesarios
+        mkdir -p output/competitors
+        mkdir -p logs
+        echo "Directorios creados:"
+        ls -la
+        
     - name: Ejecutar scraper
       env:
         GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
       run: |
-        # Crear directorio de salida
-        mkdir -p output/competitors
+        # Verificar directorios
+        echo "Verificando directorios:"
+        ls -la
+        ls -la logs/ || echo "No se pudo listar logs/"
+        
         
         # Ejecutar el script de automatización
         python automation/run_automation.py
