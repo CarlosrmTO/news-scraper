@@ -1,6 +1,7 @@
 """
 Scraper for El Mundo articles using sitemaps.
 """
+import os
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
@@ -8,9 +9,38 @@ from urllib.parse import urlparse, parse_qs
 import requests
 import re
 
-# Configuración de logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def setup_logging():
+    """
+    Configura el sistema de logging de manera robusta.
+    
+    Returns:
+        logging.Logger: Logger configurado con manejadores de consola.
+    """
+    # Configurar el logger básico
+    logger = logging.getLogger('el_mundo_scraper')
+    
+    # Eliminar manejadores existentes para evitar duplicados
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    # Configurar el nivel de log
+    logger.setLevel(logging.INFO)
+    
+    # Formato para los logs
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Manejador para consola (siempre disponible)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    return logger
+
+# Configurar logging
+logger = setup_logging()
 
 def clean_text(text):
     """Limpia el texto de caracteres no deseados."""

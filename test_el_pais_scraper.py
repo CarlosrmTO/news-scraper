@@ -10,44 +10,84 @@ from datetime import datetime, timezone, timedelta
 sys.path.insert(0, os.path.abspath('.'))
 
 def setup_logging():
-    """Configura el sistema de logging de manera simple y robusta."""
+    """
+    Configura el sistema de logging de manera robusta.
+    
+    Returns:
+        logging.Logger: Logger configurado con manejadores de consola y archivo (si es posible).
+        Si falla la configuración, devuelve un logger básico que no falla.
+    """
+    # Primero configuramos un logger básico para asegurar que siempre tengamos logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        # Forzamos a que use el manejador de consola por defecto
+        handlers=[logging.StreamHandler()]
+    )
+    
+    logger = logging.getLogger('test_el_pais_scraper')
+    
+    # Eliminar manejadores existentes para evitar duplicados
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    # Configurar el nivel de log
+    logger.setLevel(logging.INFO)
+    
+    # Formato para los logs
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Manejador para consola (siempre disponible)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # Intentar configurar archivo de log (opcional, no crítico)
+    file_handler = None
     try:
-        # Configurar el logger básico
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
-        
-        # Eliminar manejadores existentes para evitar duplicados
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        # Formato para los logs
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        
-        # Manejador para consola (siempre disponible)
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-        
-        # Intentar configurar archivo de log (opcional, no crítico)
+        # Usar directorio temporal si no se puede escribir en el directorio actual
         try:
             log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
             os.makedirs(log_dir, exist_ok=True)
             log_file = os.path.join(log_dir, 'test_el_pais_scraper.log')
+            
+            # Verificar si podemos escribir en el directorio
+            test_file = os.path.join(log_dir, '.write_test')
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            
+            # Si llegamos aquí, podemos escribir en el directorio
             file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-            logger.info(f"Logs guardados en: {log_file}")
-        except Exception as e:
-            # Si falla, solo mostramos un mensaje pero continuamos
-            logger.info("No se pudo configurar el archivo de log. Continuando solo con consola.")
+            
+        except (OSError, IOError) as e:
+            # Si no podemos escribir en el directorio de logs, usar /tmp
+            log_dir = '/tmp/test-el-pais-scraper-logs'
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, 'test_el_pais_scraper.log')
+            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+            
+            # Intentar dar permisos amplios para evitar problemas
+            try:
+                os.chmod(log_dir, 0o777)
+                os.chmod(log_file, 0o666) if os.path.exists(log_file) else None
+            except:
+                pass  # Si falla, continuamos igual
         
-        return logger
+        # Configurar el manejador de archivo
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        logger.info(f"Logs guardados en: {log_file}")
+        
     except Exception as e:
-        # Si hay algún error en la configuración del logging, devolvemos un logger básico
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        return logging.getLogger('test_el_pais_scraper_fallback')
+        # Si falla, solo mostramos un mensaje pero continuamos
+        logger.info(f"No se pudo configurar el archivo de log: {str(e)}. Continuando solo con consola.")
+    
+    return logger
 
 # Configurar logging
 logger = setup_logging()
