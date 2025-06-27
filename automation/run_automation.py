@@ -15,9 +15,20 @@ import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 
+# Configuración de importaciones para Google Drive
+try:
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    from googleapiclient.http import MediaFileUpload
+    from googleapiclient.errors import HttpError
+    GOOGLE_DRIVE_AVAILABLE = True
+except ImportError:
+    GOOGLE_DRIVE_AVAILABLE = False
+    print("Advertencia: No se encontraron las dependencias de Google Drive. La subida a Drive estará deshabilitada.")
+
 def setup_logging():
     """Configura el sistema de logging de manera simple y robusta."""
-    # Configurar el logger básico solo para consola
+    # Configurar el logger básico
     logger = logging.getLogger('news_scraper')
     logger.setLevel(logging.INFO)
     
@@ -36,123 +47,8 @@ def setup_logging():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
-    # Intentar configurar archivo de log (opcional)
-    try:
-        SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-        LOGS_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, 'logs'))
-        os.makedirs(LOGS_DIR, exist_ok=True)
-        
-        log_file = os.path.join(LOGS_DIR, 'scraper_automation.log')
-        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-        logger.info(f"Log guardado en: {log_file}")
-    except Exception as e:
-        # Si falla, continuamos sin archivo de log
-        logger.warning(f"No se pudo configurar archivo de log: {e}")
-    
-    return logger
-
-# Configurar logging al inicio
-logger = setup_logging()
-
-# Crear un logger temporal hasta que configuremos el final
-logger = logging.getLogger('news_scraper')
-logger.info("Iniciando configuración del sistema de logging...")
-
-# Intentar importar las dependencias de Google Drive
-try:
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-    from googleapiclient.http import MediaFileUpload
-    from googleapiclient.errors import HttpError
-    GOOGLE_DRIVE_AVAILABLE = True
-except ImportError:
-    GOOGLE_DRIVE_AVAILABLE = False
-    print("Advertencia: No se encontraron las dependencias de Google Drive. La subida a Drive estará deshabilitada.")
-
-def setup_logging():
-    """Configura el sistema de logging con manejo robusto de directorios y permisos."""
-    # Configuración inicial del logger
-    logger = logging.getLogger('news_scraper')
-    logger.setLevel(logging.INFO)
-    
-    # Eliminar handlers existentes para evitar duplicados
-    if logger.hasHandlers():
-        logger.handlers.clear()
-    
-    # Configurar formateador
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    
-    # Configurar handler para consola (siempre disponible)
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-    
-    # Intentar configurar el archivo de log
-    try:
-        # Determinar la ubicación del directorio de logs
-        possible_log_dirs = [
-            # 1. Directorio del script
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs'),
-            # 2. Directorio de trabajo actual
-            os.path.join(os.getcwd(), 'logs'),
-            # 3. Directorio de GitHub Actions (si está disponible)
-            os.path.join(os.environ.get('GITHUB_WORKSPACE', ''), 'logs'),
-            # 4. Directorio temporal del sistema
-            os.path.join('/tmp', 'news-scraper-logs')
-        ]
-        
-        logs_dir = None
-        for log_dir in possible_log_dirs:
-            try:
-                if not log_dir:  # Saltar rutas vacías
-                    continue
-                    
-                # Crear directorio si no existe
-                os.makedirs(log_dir, exist_ok=True)
-                
-                # Verificar permisos de escritura
-                test_file = os.path.join(log_dir, '.test_write')
-                with open(test_file, 'w') as f:
-                    f.write('test')
-                os.remove(test_file)
-                
-                # Si llegamos aquí, el directorio es utilizable
-                logs_dir = log_dir
-                break
-                
-            except (OSError, IOError) as e:
-                continue
-        
-        # Si no se pudo encontrar un directorio válido, lanzar excepción
-        if not logs_dir:
-            raise RuntimeError("No se pudo encontrar un directorio válido para los logs")
-        
-        # Configurar el archivo de log
-        log_file = os.path.join(logs_dir, 'scraper_automation.log')
-        
-        # Configurar el handler de archivo
-        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-        
-        # Mensajes de depuración
-        logger.info("=" * 60)
-        logger.info(f"Directorio de logs: {logs_dir}")
-        logger.info(f"Archivo de log: {log_file}")
-        logger.info(f"Permisos del directorio: {oct(os.stat(logs_dir).st_mode)[-3:]}")
-        logger.info("=" * 60)
-        
-    except Exception as e:
-        logger.warning(f"No se pudo configurar el archivo de log: {str(e)}")
-        logger.warning("Usando solo consola para logging")
-    
-    return logger
-        
+    # No usamos archivo de log para evitar problemas de permisos
+    logger.info("Logging configurado solo para consola")
     return logger
 
 # Configurar logging final
