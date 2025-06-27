@@ -27,21 +27,52 @@ except ImportError:
 
 def setup_logging():
     """Configura el sistema de logging asegurando que el directorio de logs existe."""
-    # Crear directorio de logs si no existe
-    logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-    os.makedirs(logs_dir, exist_ok=True)
-    
-    # Configurar el logger
-    log_file = os.path.join(logs_dir, 'scraper_automation.log')
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(__name__)
+    try:
+        # Obtener la ruta absoluta del directorio actual del script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        logs_dir = os.path.join(script_dir, 'logs')
+        
+        # Crear directorio de logs si no existe (con permisos explícitos)
+        os.makedirs(logs_dir, mode=0o755, exist_ok=True)
+        
+        # Configurar la ruta del archivo de log
+        log_file = os.path.join(logs_dir, 'scraper_automation.log')
+        
+        # Asegurarse de que el archivo de log existe y es escribible
+        with open(log_file, 'a'):
+            os.utime(log_file, None)
+        
+        # Configurar el logger con manejo de errores
+        logger = logging.getLogger('scraper_automation')
+        logger.setLevel(logging.INFO)
+        
+        # Formato del log
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        
+        # Handler para archivo
+        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+        file_handler.setFormatter(formatter)
+        
+        # Handler para consola
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        
+        # Añadir handlers al logger
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+        
+        # Mensaje de depuración
+        logger.info(f"Logging configurado correctamente en: {log_file}")
+        logger.info(f"Directorio de trabajo actual: {os.getcwd()}")
+        logger.info(f"Contenido del directorio logs: {os.listdir(logs_dir) if os.path.exists(logs_dir) else 'No existe'}")
+        
+        return logger
+        
+    except Exception as e:
+        # Si falla la configuración del logger, usar un logger básico
+        print(f"Error configurando el logger: {str(e)}")
+        logging.basicConfig(level=logging.INFO)
+        return logging.getLogger('fallback_logger')
 
 # Configurar logging
 logger = setup_logging()
