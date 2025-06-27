@@ -27,110 +27,89 @@ except ImportError:
     print("Advertencia: No se encontraron las dependencias de Google Drive. La subida a Drive estará deshabilitada.")
 
 def setup_logging():
-    """Configura el sistema de logging usando rutas absolutas y manejo robusto de errores."""
+    """Configura el sistema de logging con manejo robusto de directorios y permisos."""
+    # Configuración inicial del logger
+    logger = logging.getLogger('news_scraper')
+    logger.setLevel(logging.INFO)
+    
+    # Eliminar handlers existentes para evitar duplicados
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    # Configurar formateador
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Configurar handler para consola (siempre disponible)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # Intentar configurar el archivo de log
     try:
-        # Usar el directorio de trabajo actual como base
-        base_dir = os.getcwd()
-        logs_dir = os.path.join(base_dir, 'logs')
+        # Determinar la ubicación del directorio de logs
+        possible_log_dirs = [
+            # 1. Directorio del script
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs'),
+            # 2. Directorio de trabajo actual
+            os.path.join(os.getcwd(), 'logs'),
+            # 3. Directorio de GitHub Actions (si está disponible)
+            os.path.join(os.environ.get('GITHUB_WORKSPACE', ''), 'logs'),
+            # 4. Directorio temporal del sistema
+            os.path.join('/tmp', 'news-scraper-logs')
+        ]
         
-        # Si estamos en GitHub Actions, usar el directorio de trabajo del repositorio
-        if os.environ.get('GITHUB_WORKSPACE'):
-            base_dir = os.environ['GITHUB_WORKSPACE']
-            logs_dir = os.path.join(base_dir, 'logs')
-        # Si no, usar el directorio del script como respaldo
-        elif not os.path.exists(logs_dir) or not os.access(logs_dir, os.W_OK):
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            logs_dir = os.path.join(base_dir, 'logs')
+        logs_dir = None
+        for log_dir in possible_log_dirs:
+            try:
+                if not log_dir:  # Saltar rutas vacías
+                    continue
+                    
+                # Crear directorio si no existe
+                os.makedirs(log_dir, exist_ok=True)
+                
+                # Verificar permisos de escritura
+                test_file = os.path.join(log_dir, '.test_write')
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                
+                # Si llegamos aquí, el directorio es utilizable
+                logs_dir = log_dir
+                break
+                
+            except (OSError, IOError) as e:
+                continue
         
-        # Crear directorio de logs con permisos explícitos
-        try:
-            os.makedirs(logs_dir, mode=0o777, exist_ok=True)
-            # Asegurar permisos de escritura
-            os.chmod(logs_dir, 0o777)
-        except Exception as dir_error:
-            print(f"Error al crear directorio de logs: {dir_error}")
-            # Si falla, intentar con /tmp
-            logs_dir = '/tmp/news-scraper-logs'
-            os.makedirs(logs_dir, mode=0o777, exist_ok=True)
+        # Si no se pudo encontrar un directorio válido, lanzar excepción
+        if not logs_dir:
+            raise RuntimeError("No se pudo encontrar un directorio válido para los logs")
         
-        # Configurar ruta absoluta para el archivo de log
+        # Configurar el archivo de log
         log_file = os.path.join(logs_dir, 'scraper_automation.log')
         
-        # Asegurar que el archivo existe y es escribible
-        try:
-            with open(log_file, 'a'):
-                os.utime(log_file, None)
-            os.chmod(log_file, 0o666)  # Permisos de lectura/escritura para todos
-        except Exception as file_error:
-            print(f"Error al configurar archivo de log: {file_error}")
-            # Usar stderr como último recurso
-            logging.basicConfig(level=logging.INFO)
-            logger = logging.getLogger('fallback_logger')
-            logger.error(f"No se pudo configurar el archivo de log: {file_error}")
-            return logger
-        
-        # Configurar el logger
-        logger = logging.getLogger('news_scraper')
-        logger.setLevel(logging.INFO)
-        
-        # Eliminar handlers existentes para evitar duplicados
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        # Formato del log
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        
-        # Configurar handler para archivo
-        try:
-            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-        except Exception as handler_error:
-            print(f"Error al configurar file handler: {handler_error}")
-        
-        # Configurar handler para consola
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+        # Configurar el handler de archivo
+        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
         
         # Mensajes de depuración
-        logger.info("=" * 80)
-        logger.info(f"Iniciando ejecución - {datetime.now().isoformat()}")
-        logger.info(f"Directorio de trabajo: {os.getcwd()}")
+        logger.info("=" * 60)
         logger.info(f"Directorio de logs: {logs_dir}")
-        logger.info(f"Ruta del archivo de log: {log_file}")
+        logger.info(f"Archivo de log: {log_file}")
         logger.info(f"Permisos del directorio: {oct(os.stat(logs_dir).st_mode)[-3:]}")
-        
-        # Verificar y listar directorio de logs
-        try:
-            if os.path.exists(logs_dir):
-                logger.info(f"Contenido del directorio de logs: {os.listdir(logs_dir)}")
-            else:
-                logger.warning(f"El directorio de logs no existe: {logs_dir}")
-        except Exception as list_error:
-            logger.error(f"Error al listar directorio de logs: {list_error}")
-        
-        logger.info("=" * 80)
-        return logger
+        logger.info("=" * 60)
         
     except Exception as e:
-        # Configuración de emergencia si todo lo demás falla
-        print(f"ERROR CRÍTICO en setup_logging: {str(e)}")
-        print(f"Tipo de error: {type(e).__name__}")
-        print(f"Traceback: {traceback.format_exc()}")
+        logger.warning(f"No se pudo configurar el archivo de log: {str(e)}")
+        logger.warning("Usando solo consola para logging")
+    
+    return logger
         
-        # Intentar logging básico a stderr
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[logging.StreamHandler()]
-        )
-        logger = logging.getLogger('emergency_logger')
-        logger.error(f"Fallo en la configuración del logger: {str(e)}")
-        return logger
+    # El resto del código de configuración de logging se ha movido arriba
+    pass
 
 # Configurar logging
 logger = setup_logging()
