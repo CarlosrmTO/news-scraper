@@ -15,9 +15,30 @@ import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 
-# Añadir el directorio raíz del proyecto al path de Python
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(project_root))  # Subir un nivel desde automation/
+# Asegurarse de que el directorio raíz del proyecto esté en el path de Python
+# Esto es necesario para que los imports funcionen tanto localmente como en CI
+try:
+    # Obtener la ruta absoluta del directorio raíz del proyecto
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # Si no está en el path, añadirlo al principio
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+        
+    # Debug: Mostrar el path actual de Python
+    print(f"\n=== DEBUG: Python Path ===")
+    for i, path in enumerate(sys.path, 1):
+        print(f"{i}. {path}")
+    print("======================\n")
+    
+    # Debug: Verificar si el archivo existe
+    export_competitors_path = os.path.join(project_root, 'export_competitors.py')
+    print(f"Buscando export_competitors.py en: {export_competitors_path}")
+    print(f"El archivo existe: {os.path.exists(export_competitors_path)}")
+    
+except Exception as e:
+    print(f"Error al configurar el path de Python: {e}")
+    raise
 
 # Configuración de importaciones para Google Drive
 try:
@@ -251,8 +272,28 @@ class GoogleDriveUploader:
 def run_scraping():
     """Ejecutar el proceso de scraping."""
     try:
-        # Importar aquí para evitar importaciones circulares
-        from export_competitors import main as export_competitors
+        # Debug: Mostrar el directorio de trabajo actual
+        print(f"\n=== DEBUG: Directorio de trabajo actual ===")
+        print(f"Directorio actual: {os.getcwd()}")
+        print(f"Contenido del directorio: {os.listdir('.')}")
+        print("======================================\n")
+        
+        # Intentar importar el módulo
+        try:
+            import export_competitors
+            print("Módulo export_competitors importado correctamente")
+            from export_competitors import main as export_competitors
+            print("Función main importada correctamente de export_competitors")
+        except ImportError as e:
+            print(f"Error al importar export_competitors: {e}")
+            print(f"sys.path: {sys.path}")
+            # Intentar importación absoluta
+            try:
+                from news_scraper.export_competitors import main as export_competitors
+                print("Importación absoluta exitosa")
+            except ImportError as e2:
+                print(f"Error en importación absoluta: {e2}")
+                raise
         
         # Configurar argumentos para export_competitors
         args = argparse.Namespace(
