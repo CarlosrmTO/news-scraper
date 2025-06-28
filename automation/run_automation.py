@@ -15,26 +15,38 @@ import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 
-# Asegurarse de que el directorio raíz del proyecto esté en el path de Python
-# Esto es necesario para que los imports funcionen tanto localmente como en CI
+# Configuración de rutas para asegurar que los imports funcionen en cualquier entorno
 try:
     # Obtener la ruta absoluta del directorio raíz del proyecto
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
-    # Si no está en el path, añadirlo al principio
+    # Añadir el directorio raíz al path de Python si no está ya
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
-        
+    
+    # Añadir también el directorio automation/ al path por si acaso
+    automation_dir = os.path.dirname(os.path.abspath(__file__))
+    if automation_dir not in sys.path:
+        sys.path.insert(0, automation_dir)
+    
     # Debug: Mostrar el path actual de Python
-    print(f"\n=== DEBUG: Python Path ===")
+    print("\n=== DEBUG: Python Path ===")
     for i, path in enumerate(sys.path, 1):
         print(f"{i}. {path}")
     print("======================\n")
     
-    # Debug: Verificar si el archivo existe
-    export_competitors_path = os.path.join(project_root, 'export_competitors.py')
-    print(f"Buscando export_competitors.py en: {export_competitors_path}")
-    print(f"El archivo existe: {os.path.exists(export_competitors_path)}")
+    # Debug: Verificar si los archivos importantes existen
+    files_to_check = [
+        'export_competitors.py',
+        'competitors/__init__.py',
+        'competitors/exporters/__init__.py'
+    ]
+    
+    print("=== Verificando archivos importantes ===")
+    for file in files_to_check:
+        full_path = os.path.join(project_root, file)
+        print(f"{file}: {'Existe' if os.path.exists(full_path) else 'No existe'}")
+    print("======================================\n")
     
 except Exception as e:
     print(f"Error al configurar el path de Python: {e}")
@@ -273,27 +285,42 @@ def run_scraping():
     """Ejecutar el proceso de scraping."""
     try:
         # Debug: Mostrar el directorio de trabajo actual
-        print(f"\n=== DEBUG: Directorio de trabajo actual ===")
+        print("\n=== DEBUG: Directorio de trabajo actual ===")
         print(f"Directorio actual: {os.getcwd()}")
-        print(f"Contenido del directorio: {os.listdir('.')}")
+        print("Contenido del directorio:", os.listdir('.'))
         print("======================================\n")
         
-        # Intentar importar el módulo
-        try:
-            import export_competitors
-            print("Módulo export_competitors importado correctamente")
-            from export_competitors import main as export_competitors
-            print("Función main importada correctamente de export_competitors")
-        except ImportError as e:
-            print(f"Error al importar export_competitors: {e}")
-            print(f"sys.path: {sys.path}")
-            # Intentar importación absoluta
+        # Lista de posibles rutas de importación a intentar
+        import_attempts = [
+            ('importación directa', 'export_competitors'),
+            ('importación desde raíz', f'{os.path.basename(project_root)}.export_competitors'),
+            ('importación absoluta', 'news_scraper.export_competitors')
+        ]
+        
+        export_competitors = None
+        last_error = None
+        
+        for attempt_name, module_path in import_attempts:
             try:
-                from news_scraper.export_competitors import main as export_competitors
-                print("Importación absoluta exitosa")
-            except ImportError as e2:
-                print(f"Error en importación absoluta: {e2}")
-                raise
+                print(f"\n=== Intentando {attempt_name} desde: {module_path} ===")
+                module = __import__(module_path, fromlist=['main'])
+                if hasattr(module, 'main'):
+                    export_competitors = module.main
+                    print(f"✓ {attempt_name} exitosa")
+                    break
+                else:
+                    print(f"✗ {attempt_name}: El módulo no tiene función 'main'")
+            except Exception as e:
+                last_error = e
+                print(f"✗ {attempt_name} falló: {str(e)}")
+        
+        if export_competitors is None:
+            print("\n=== Todas las importaciones fallaron ===")
+            print("Último error:", str(last_error))
+            print("sys.path:", sys.path)
+            print("Directorio actual:", os.getcwd())
+            print("======================================\n")
+            raise ImportError(f"No se pudo importar export_competitors. Último error: {last_error}")
         
         # Configurar argumentos para export_competitors
         args = argparse.Namespace(
