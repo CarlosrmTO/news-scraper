@@ -15,6 +15,10 @@ import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 
+# Añadir el directorio raíz del proyecto al path de Python
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(project_root))  # Subir un nivel desde automation/
+
 # Configuración de importaciones para Google Drive
 try:
     from google.oauth2 import service_account
