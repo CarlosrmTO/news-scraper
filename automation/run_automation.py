@@ -26,10 +26,13 @@ except ImportError:
     GOOGLE_DRIVE_AVAILABLE = False
     print("Advertencia: No se encontraron las dependencias de Google Drive. La subida a Drive estará deshabilitada.")
 
-def setup_logging():
+def setup_logging(disable_file_logging=False):
     """
     Configura el sistema de logging de manera robusta.
     
+    Args:
+        disable_file_logging (bool): Si es True, deshabilita el logging a archivo.
+        
     Returns:
         logging.Logger: Logger configurado con manejadores de consola y archivo (si es posible).
         Si falla la configuración, devuelve un logger básico que no falla.
@@ -48,6 +51,11 @@ def setup_logging():
     # Eliminar manejadores existentes para evitar duplicados
     if logger.hasHandlers():
         logger.handlers.clear()
+        
+    # Si el logging a archivo está deshabilitado, terminamos aquí
+    if disable_file_logging:
+        logger.info("Logging a archivo deshabilitado (solo consola)")
+        return logger
     
     # Configurar el nivel de log
     logger.setLevel(logging.INFO)
@@ -116,8 +124,14 @@ except Exception as e:
     print(f"No se pudo crear el directorio de logs: {e}")
 
 # Configurar logging final
-logger = setup_logging()
-logger.info("Configuración de logging completada correctamente")
+# Deshabilitar logging a archivo en entornos CI
+is_ci = os.getenv('CI', '').lower() in ('true', '1', 't')
+logger = setup_logging(disable_file_logging=is_ci)
+
+if is_ci:
+    logger.info("Modo CI detectado: Logging a archivo deshabilitado")
+else:
+    logger.info("Configuración de logging completada correctamente")
 
 def load_config():
     """Cargar configuración desde el archivo JSON."""
